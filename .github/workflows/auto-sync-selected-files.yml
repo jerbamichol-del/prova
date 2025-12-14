@@ -1,0 +1,90 @@
+name: Auto Sync Selected Files to Main Repo
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  sync-selected-files:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout secondary repo
+        uses: actions/checkout@v4
+        with:
+          path: source
+
+      - name: Checkout main repo
+        uses: actions/checkout@v4
+        with:
+          repository: jerbamichol-del/gestore
+          token: ${{ secrets.SYNC_TOKEN }}
+          path: target
+          ref: main
+
+      - name: Copy allowed files only
+        run: |
+          files=(
+            components/CalculatorContainer.tsx
+            components/ExpenseList.tsx
+            components/ImageParserModal.tsx
+            components/CategoryFilter.tsx
+            components/TrapezoidTab.tsx
+            components/TrapezoidTabRight.tsx
+            components/SoftTab.tsx
+            components/SoftBumpBaseline.tsx
+            components/EdgeSwipeCatcher.tsx
+            hooks/useLeftSwipeFromRightEdge.ts
+            hooks/useLeftSwipeFromRightEdge_v2.ts
+            hooks/useSwipeDownCloseAtTop.ts
+            hooks/useLongPress.ts
+            utils/date.ts
+            types/navigation.ts
+            utils/cloud.ts
+            hooks/useRecurringExpenseGenerator.ts
+            hooks/useCloudSync.ts
+            hooks/usePendingImages.ts
+            hooks/useInstallPrompt.ts
+            hooks/usePrivacyGate.ts
+            hooks/useBackNavigation.ts
+            App.tsx
+            components/Dashboard.tsx
+            screens/HistoryScreen.tsx
+            screens/RecurringExpensesScreen.tsx
+            components/TransactionDetailPage.tsx
+            components/ExpenseForm.tsx
+          )
+
+          for file in "${files[@]}"; do
+            mkdir -p "target/$(dirname "$file")"
+            cp "source/$file" "target/$file"
+          done
+
+      - name: Commit changes if any
+        run: |
+          cd target
+          git config user.name "auto-sync-bot"
+          git config user.email "auto-sync@github.com"
+
+          git checkout -b auto-sync-selected || true
+          git add .
+          
+          if git diff --cached --quiet; then
+            echo "Nessuna modifica nei file consentiti"
+            exit 0
+          fi
+
+          git commit -m "Auto sync selected files from secondary repo"
+          git push origin auto-sync-selected --force
+
+      - name: Create and auto-merge PR
+        uses: peter-evans/create-pull-request@v6
+        with:
+          token: ${{ secrets.SYNC_TOKEN }}
+          base: main
+          branch: auto-sync-selected
+          title: "Auto merge selected files"
+          body: "Sincronizzazione automatica SOLO dei file consentiti"
+          auto-merge: true
+          delete-branch: true
