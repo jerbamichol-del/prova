@@ -15,10 +15,12 @@ jobs:
         with:
           path: source
 
-      - name: Checkout main repo
+      - name: Checkout main repo (target)
         uses: actions/checkout@v4
         with:
-          repository: USER/REPO_PRINCIPALE
+        repository: jerbamichol-del/gestore
+        ref: main
+          path: target
           token: ${{ secrets.SYNC_TOKEN }}
           path: target
           ref: main
